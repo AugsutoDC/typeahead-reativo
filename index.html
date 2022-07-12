@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Typeahead</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Roboto&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://unpkg.com/rxjs@^7/dist/bundles/rxjs.umd.min.js"></script>
+
+    <style>
+
+        :root {
+           --green-800:  #6d8b74;
+           --green-500: #5f7161;
+           --beige-500: #d0c9c0;
+           --beige-200: #efead8;
+        }
+
+      body {
+        margin: 0;
+        padding: 0;
+        border: 0;
+
+        font-family: "Roboto", sans-serif;
+
+        background-color: var(--green-800);
+
+        width: 100%;
+        height: 100vh;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+
+        color: var(--green-500);
+      }
+
+      .content {
+        min-width: 18.75rem;
+      }
+
+      input {
+        height: 1.87rem;
+        font-size: 1.25rem;
+        font-family: inherit;
+        border: 0;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        background-color: var(--beige-200);
+        color: var(--green-500);
+
+        min-width: 18.75rem;
+
+        transition: 180ms box-shadow ease-in-out;
+      }
+
+      input:focus {
+        border-color: var(--green-500);
+        box-shadow: 0 0 0 3px hsl(0deg 0% 0% / 20%);
+        outline: 3px solid transparent;
+      }
+
+      ul {
+        padding: 0;
+        border-radius: 5px;
+        border: solid 2px var(--beige-500);
+        box-sizing: border-box;
+        box-shadow: #00000029 0 0 20px 1px;
+        max-height: 80%;
+        overflow: auto;
+        background-color: var(--beige-200);
+      }
+
+      ul:empty {
+        display: none;
+      }
+
+      li {
+        list-style-type: none;
+        padding: 1rem;
+        cursor: pointer;
+      }
+
+      li:not(:last-of-type) {
+        border-bottom: solid 2px var(--beige-500);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="content">
+      <input type="text" placeholder="País..." />
+      <ul></ul>
+    </div>
+
+    <script>
+      const {
+        fromEvent,
+        ajax: { ajax },
+        map,
+        switchMap,
+        of,
+        catchError,
+        startWith,
+        debounceTime,
+        distinctUntilChanged,
+      } = rxjs;
+
+      const inputEvent = fromEvent(document.querySelector("input"), "input");
+      const ul = document.querySelector("ul");
+
+      const mostraResultado = (res) => {
+        ul.innerHTML = res.map((li) => `<li>${li}</li>`).join("");
+      };
+
+      const buscaPaisNaApi = (termo) =>
+        ajax(`https://restcountries.com/v3.1/name/${termo}`).pipe(
+          map((res) => res.response),
+          map((resposta) => resposta.map((pais) => pais.name.common))
+        );
+
+      inputEvent
+        .pipe(
+          debounceTime(300),
+          map((evento) => evento.target.value),
+          map((termo) => termo.trim()),
+          distinctUntilChanged(),
+          switchMap((termo) => {
+            if (!termo || termo.length < 3) return of([]);
+
+            return buscaPaisNaApi(termo);
+          }),
+          catchError((err, caught) => {
+            return caught.pipe(startWith([]));
+          })
+        )
+        .subscribe(mostraResultado);
+    </script>
+  </body>
+</html>
